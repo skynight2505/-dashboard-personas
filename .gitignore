@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+token.pickle
+credentials.json
+service-account.json
+uploads/
+*.db

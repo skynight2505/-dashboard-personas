@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Personas</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <h1>Dashboard de Personas</h1>
+            <p class="subtitle">Gestión de registros: vivos, desaparecidos y fallecidos</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="stats-section">
+            <div class="stats-grid">
+                <div class="stat-card total" onclick="filtrarCategoria('')">
+                    <div class="stat-number" id="stat-total">0</div>
+                    <div class="stat-label">Total Registros</div>
+                </div>
+                <div class="stat-card vivo" onclick="filtrarCategoria('vivo_sitio_actual')">
+                    <div class="stat-number" id="stat-vivos">0</div>
+                    <div class="stat-label">Vivos / Sitio Actual</div>
+                </div>
+                <div class="stat-card desaparecido" onclick="filtrarCategoria('desaparecido')">
+                    <div class="stat-number" id="stat-desaparecidos">0</div>
+                    <div class="stat-label">Desaparecidos</div>
+                </div>
+                <div class="stat-card fallecido" onclick="filtrarCategoria('fallecido')">
+                    <div class="stat-number" id="stat-fallecidos">0</div>
+                    <div class="stat-label">Fallecidos</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="upload-section">
+            <div class="card">
+                <h2>Subir Archivos</h2>
+                <p class="help-text">Formatos aceptados: PDF, Excel (.xlsx, .xls), Word (.docx)</p>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                    </div>
+                    <p>Arrastra tus archivos aquí o <span class="link">haz clic para seleccionar</span></p>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.xlsx,.xls,.docx" hidden>
+                </div>
+                <div id="uploadProgress" class="hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="uploadStatus">Procesando...</p>
+                </div>
+                <div id="uploadResult" class="hidden"></div>
+            </div>
+
+            <div class="card">
+                <h2>Sincronizar con Google Drive</h2>
+                <p class="help-text">Lee archivos directamente desde una carpeta de Drive organizada por categorías</p>
+                <div class="drive-sync">
+                    <input type="text" id="driveFolderName" value="DashboardPersonas" placeholder="Nombre carpeta raíz en Drive">
+                    <button class="btn btn-primary" onclick="sincronizarDrive()">
+                        Sincronizar desde Drive
+                    </button>
+                </div>
+                <div id="driveResult" class="hidden"></div>
+            </div>
+        </section>
+
+        <section id="instructions-section">
+            <div class="card instructions-card">
+                <h2>Instrucciones: Cómo organizar los documentos</h2>
+                <div class="instructions-content">
+                    <div class="instruction-step">
+                        <h3>1. Crea una carpeta raíz en Google Drive</h3>
+                        <p>Nombra la carpeta como quieras (ej: <strong>DashboardPersonas</strong>). Esta será la carpeta principal que el sistema leerá.</p>
+                    </div>
+                    <div class="instruction-step">
+                        <h3>2. Dentro, crea una subcarpeta por cada categoría</h3>
+                        <p>Cada subcarpeta debe contener <strong>SOLO UNA CATEGORÍA</strong>. El sistema clasificará todos los archivos dentro de esa carpeta con la misma categoría:</p>
+                        <div class="folder-structure">
+                            <div class="folder">
+                                <span class="folder-icon">📁</span>
+                                <span><strong>DashboardPersonas</strong> (carpeta raíz)</span>
+                            </div>
+                            <div class="folder children">
+                                <div class="folder">
+                                    <span class="folder-icon">📁</span>
+                                    <span><strong>Vivos</strong> <span class="badge badge-vivo">→ Vivo / Sitio actual</span></span>
+                                </div>
+                                <div class="folder">
+                                    <span class="folder-icon">📁</span>
+                                    <span><strong>Hospital</strong> <span class="badge badge-vivo">→ Vivo / Sitio actual</span></span>
+                                </div>
+                                <div class="folder">
+                                    <span class="folder-icon">📁</span>
+                                    <span><strong>Desaparecidos</strong> <span class="badge badge-desaparecido">→ Desaparecido</span></span>
+                                </div>
+                                <div class="folder">
+                                    <span class="folder-icon">📁</span>
+                                    <span><strong>Fallecidos</strong> <span class="badge badge-fallecido">→ Fallecido</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="note">Los nombres de carpeta reconocidos: <code>Vivos, Vivo, Hospital, Heridos, Desaparecidos, Desaparecido, Extraviados, Fallecidos, Fallecido, Muertos, Occisos</code></p>
+                    </div>
+                    <div class="instruction-step">
+                        <h3>3. Cada archivo debe listar personas con nombre y cédula</h3>
+                        <p>Los documentos (PDF, Excel, Word) deben contener listas de personas. El sistema extraerá automáticamente <strong>nombre y cédula</strong> de cada registro.</p>
+                        <div class="example-formats">
+                            <div class="format-example">
+                                <h4>Excel recomendado</h4>
+                                <table class="example-table">
+                                    <thead><tr><th>Cédula</th><th>Nombre Completo</th><th>Edad</th></tr></thead>
+                                    <tbody>
+                                        <tr><td>12345678</td><td>Juan Pérez López</td><td>35</td></tr>
+                                        <tr><td>87654321</td><td>María García Rojas</td><td>28</td></tr>
+                                    </tbody>
+                                </table>
+                                <p class="note">Las columnas pueden llamarse: <code>cédula, cedula, identificación, documento, id</code> y <code>nombre, nombre_completo, nombres, apellido</code></p>
+                            </div>
+                            <div class="format-example">
+                                <h4>PDF / Word</h4>
+                                <p>Puede tener formato de lista o tabla. El sistema buscará patrones como:</p>
+                                <pre class="code-block">12345678 Juan Pérez López
+87654321 María García Rojas</pre>
+                                <p class="note">O en formato tabla dentro del documento.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="instruction-step">
+                        <h3>4. Búsqueda por nombre o cédula</h3>
+                        <p>Una vez procesados los documentos, puedes buscar cualquier persona por <strong>nombre o cédula</strong> en la barra de búsqueda de abajo. El sistema encontrará la persona sin importar en qué documento o categoría fue registrada.</p>
+                    </div>
+                    <div class="instruction-step">
+                        <h3>5. Reclasificación manual</h3>
+                        <p>Si una persona está en la categoría incorrecta, puedes <strong>editarla manualmente</strong> haciendo clic en el botón de editar.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="search-section">
+            <div class="card">
+                <h2>Buscar Personas</h2>
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="Buscar por nombre o cédula..." oninput="buscarPersonas()">
+                    <select id="categoriaFilter" onchange="buscarPersonas()">
+                        <option value="">Todas las categorías</option>
+                        <option value="vivo_sitio_actual">Vivos / Sitio Actual</option>
+                        <option value="desaparecido">Desaparecidos</option>
+                        <option value="fallecido">Fallecidos</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="exportarDatos()">Exportar</button>
+                </div>
+                <div id="results-count" class="hidden"></div>
+                <div id="results-container" class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cédula</th>
+                                <th>Nombre Completo</th>
+                                <th>Categoría</th>
+                                <th>Documento Fuente</th>
+                                <th>Fecha Registro</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody"></tbody>
+                    </table>
+                </div>
+                <div id="noResults" class="hidden">
+                    <p>No se encontraron resultados.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="editModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close" onclick="cerrarModal()">&times;</span>
+            <h3>Editar Persona</h3>
+            <input type="hidden" id="editId">
+            <div class="form-group">
+                <label>Nombre Completo</label>
+                <input type="text" id="editNombre">
+            </div>
+            <div class="form-group">
+                <label>Cédula</label>
+                <input type="text" id="editCedula">
+            </div>
+            <div class="form-group">
+                <label>Categoría</label>
+                <select id="editCategoria">
+                    <option value="vivo_sitio_actual">Vivo / Sitio Actual</option>
+                    <option value="desaparecido">Desaparecido</option>
+                    <option value="fallecido">Fallecido</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="guardarEdicion()">Guardar Cambios</button>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
