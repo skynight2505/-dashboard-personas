@@ -1,7 +1,8 @@
+language = "python3"
 run = "python run.py"
 
 [nix]
 channel = "stable-24_05"
 
-[deployment]
-run = ["python", "run.py"]
+[packager]
+language = "python3"
