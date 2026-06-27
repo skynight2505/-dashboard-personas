@@ -22,7 +22,10 @@ from drive_watcher import sincronizar_desde_drive
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    logger.warning(f"No se pudo crear la BD al iniciar: {e}")
 
 app = FastAPI(title="Dashboard de Personas API", version="1.0.0")
 
