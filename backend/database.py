@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 load_dotenv(env_path)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/personas_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./personas.db")
 
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
