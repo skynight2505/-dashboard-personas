@@ -1,0 +1,4 @@
+run = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+
+[nix]
+channel = "stable-24_05"
