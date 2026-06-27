@@ -12,3 +12,4 @@ python-magic==0.4.27
 python-dotenv==1.0.1
 google-api-python-client==2.147.0
 google-auth-httplib2==0.2.0
+a2wsgi==1.10.10
