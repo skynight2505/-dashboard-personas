@@ -61,15 +61,31 @@
             </div>
 
             <div class="card">
-                <h2>Sincronizar con Google Drive</h2>
-                <p class="help-text">Lee archivos directamente desde una carpeta de Drive organizada por categorías</p>
-                <div class="drive-sync">
-                    <input type="text" id="driveFolderName" value="DashboardPersonas" placeholder="Nombre carpeta raíz en Drive">
-                    <button class="btn btn-primary" onclick="sincronizarDrive()">
-                        Sincronizar desde Drive
+                <h2>Scraping Web</h2>
+                <p class="help-text">Ingresa una URL para buscar y extraer personas de páginas web</p>
+                <div class="scrape-form">
+                    <div class="form-group">
+                        <label for="scrapeUrl">URL de la página</label>
+                        <input type="url" id="scrapeUrl" placeholder="https://example.com/personas" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="scrapePattern">Tipo de extracción</label>
+                        <select id="scrapePattern">
+                            <option value="auto">Automático (recomendado)</option>
+                            <option value="table">Tablas HTML</option>
+                            <option value="list">Listas HTML</option>
+                            <option value="regex">Patrones regex</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="scrapelink()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            <path d="M10 14l6-6"/>
+                        </svg>
+                        Scrapear URL
                     </button>
                 </div>
-                <div id="driveResult" class="hidden"></div>
+                <div id="scrapeResult" class="hidden"></div>
             </div>
         </section>
 
@@ -167,7 +183,7 @@
                                 <th>Cédula</th>
                                 <th>Nombre Completo</th>
                                 <th>Categoría</th>
-                                <th>Documento Fuente</th>
+                                <th>Fuente Web</th>
                                 <th>Fecha Registro</th>
                                 <th>Acciones</th>
                             </tr>

@@ -19,5 +19,7 @@ class Persona(Base):
     nombre_completo = Column(String(300), index=True)
     categoria = Column(SAEnum(CategoriaPersona), default=CategoriaPersona.desaparecido)
     fuente_documento = Column(String(300))
+    url_fuente = Column(String(500), nullable=True)
+    metadatos_fuente = Column(JSON, nullable=True)
     fecha_registro = Column(DateTime(timezone=True), server_default=func.now())
     datos_extra = Column(JSON, nullable=True)

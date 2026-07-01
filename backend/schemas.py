@@ -8,6 +8,8 @@ class PersonaBase(BaseModel):
     nombre_completo: str
     categoria: str = "desaparecido"
     fuente_documento: Optional[str] = None
+    url_fuente: Optional[str] = None
+    metadatos_fuente: Optional[dict] = None
     datos_extra: Optional[dict] = None
 
 
@@ -19,6 +21,7 @@ class PersonaUpdate(BaseModel):
     categoria: Optional[str] = None
     nombre_completo: Optional[str] = None
     cedula: Optional[str] = None
+
 
 
 class PersonaResponse(PersonaBase):

@@ -209,6 +209,218 @@ async function sincronizarDrive() {
     }
 }
 
+// Separate scraping data state
+let scrapedPersons = [];
+let scrapedSourceUrl = "";
+
+document.addEventListener("DOMContentLoaded", function () {
+    cargarStats();
+    cargarPersonas();
+
+    const uploadArea = document.getElementById("uploadArea");
+    const fileInput = document.getElementById("fileInput");
+
+    uploadArea.addEventListener("click", function () {
+        fileInput.click();
+    });
+
+    uploadArea.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        uploadArea.classList.add("dragover");
+    });
+
+    uploadArea.addEventListener("dragleave", function () {
+        uploadArea.classList.remove("dragover");
+    });
+
+    uploadArea.addEventListener("drop", function (e) {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            subirArchivos(files);
+        }
+    });
+
+    fileInput.addEventListener("change", function () {
+        if (this.files.length > 0) {
+            subirArchivos(this.files);
+        }
+    });
+
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+            cerrarModal();
+        }
+    });
+});
+
+async function cargarStats() {
+    try {
+        const res = await fetch(`${API_BASE}/api/stats`);
+        const data = await res.json();
+        document.getElementById("stat-total").textContent = data.total;
+        document.getElementById("stat-vivos").textContent = data.vivos;
+        document.getElementById("stat-desaparecidos").textContent = data.desaparecidos;
+        document.getElementById("stat-fallecidos").textContent = data.fallecidos;
+    } catch (err) {
+        console.error("Error cargando stats:", err);
+    }
+}
+
+async function cargarPersonas() {
+    const q = document.getElementById("searchInput").value.trim();
+    const categoria = currentCategoriaFilter || document.getElementById("categoriaFilter").value;
+    let url = `${API_BASE}/api/personas?`;
+
+    if (q) url += `q=${encodeURIComponent(q)}&`;
+    if (categoria) url += `categoria=${encodeURIComponent(categoria)}`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        renderPersonas(data);
+    } catch (err) {
+        console.error("Error cargando personas:", err);
+    }
+}
+
+function buscarPersonas() {
+    cargarPersonas();
+}
+
+function filtrarCategoria(categoria) {
+    currentCategoriaFilter = categoria;
+    document.getElementById("categoriaFilter").value = categoria;
+    cargarPersonas();
+}
+
+function renderPersonas(personas) {
+    const tbody = document.getElementById("resultsBody");
+    const noResults = document.getElementById("noResults");
+    const resultsCount = document.getElementById("results-count");
+
+    resultsCount.classList.remove("hidden");
+    resultsCount.textContent = `${personas.length} resultado(s) encontrado(s)`;
+
+    if (personas.length === 0) {
+        tbody.innerHTML = "";
+        noResults.classList.remove("hidden");
+        return;
+    }
+
+    noResults.classList.add("hidden");
+    tbody.innerHTML = personas.map(p => {
+        const categoriaLabel = {
+            "vivo_sitio_actual": "Vivo / Sitio Actual",
+            "desaparecido": "Desaparecido",
+            "fallecido": "Fallecido"
+        }[p.categoria] || p.categoria;
+
+        const categoriaClass = {
+            "vivo_sitio_actual": "categoria-vivo",
+            "desaparecido": "categoria-desaparecido",
+            "fallecido": "categoria-fallecido"
+        }[p.categoria] || "";
+
+        const fecha = p.fecha_registro ? new Date(p.fecha_registro).toLocaleDateString("es-VE") : "-";
+
+        return `<tr>
+            <td>${p.cedula || "-"}</td>
+            <td><strong>${p.nombre_completo}</strong></td>
+            <td><span class="categoria-badge ${categoriaClass}">${categoriaLabel}</span></td>
+            <td>${p.fuente_documento || "-"}</td>
+            <td><a href="${p.url_fuente || "#"}" target="_blank" class="link" title="Ver fuente">🔗</a></td>
+            <td>${fecha}</td>
+            <td class="acciones-cell">
+                <button class="btn btn-small btn-edit" onclick="abrirModal(${p.id}, '${p.nombre_completo.replace(/'/g, "\\'")}', '${p.cedula || ""}', '${p.categoria}')">Editar</button>
+                <button class="btn btn-small btn-delete" onclick="eliminarPersona(${p.id})">Eliminar</button>
+            </td>
+        </tr>`;
+    }).join("");
+}
+
+async function subirArchivos(files) {
+    const progress = document.getElementById("uploadProgress");
+    const progressFill = document.getElementById("progressFill");
+    const uploadStatus = document.getElementById("uploadStatus");
+    const uploadResult = document.getElementById("uploadResult");
+
+    progress.classList.remove("hidden");
+    uploadResult.classList.add("hidden");
+    progressFill.style.width = "0%";
+    uploadStatus.textContent = "Subiendo archivos...";
+
+    const formData = new FormData();
+    for (const file of files) {
+        formData.append("files", file);
+    }
+
+    progressFill.style.width = "30%";
+    uploadStatus.textContent = "Procesando documentos...";
+
+    try {
+        const res = await fetch(`${API_BASE}/api/upload`, {
+            method: "POST",
+            body: formData
+        });
+
+        progressFill.style.width = "100%";
+        const data = await res.json();
+
+        if (!res.ok) {
+            uploadResult.className = "alert-error";
+            uploadResult.textContent = data.detail || "Error al procesar archivos";
+        } else {
+            uploadResult.className = "alert-success";
+            uploadResult.textContent = data.message;
+        }
+
+        uploadResult.classList.remove("hidden");
+        cargarStats();
+        cargarPersonas();
+    } catch (err) {
+        uploadResult.className = "alert-error";
+        uploadResult.textContent = "Error de conexión al servidor";
+        uploadResult.classList.remove("hidden");
+    }
+
+    setTimeout(() => {
+        progress.classList.add("hidden");
+    }, 2000);
+}
+
+async function sincronizarDrive() {
+    const folderName = document.getElementById("driveFolderName").value.trim() || "DashboardPersonas";
+    const driveResult = document.getElementById("driveResult");
+
+    driveResult.className = "alert-success";
+    driveResult.textContent = "Sincronizando con Google Drive...";
+    driveResult.classList.remove("hidden");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/drive/sync?carpeta_raiz=${encodeURIComponent(folderName)}`, {
+            method: "POST"
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            driveResult.className = "alert-error";
+            driveResult.textContent = data.detail || "Error de sincronización";
+        } else {
+            driveResult.className = "alert-success";
+            driveResult.textContent = data.message;
+        }
+
+        cargarStats();
+        cargarPersonas();
+    } catch (err) {
+        driveResult.className = "alert-error";
+        driveResult.textContent = "Error de conexión al servidor. Verifica que el backend esté corriendo.";
+    }
+}
+
 async function exportarDatos() {
     try {
         const res = await fetch(`${API_BASE}/api/export`);
@@ -287,5 +499,53 @@ async function eliminarPersona(id) {
         cargarPersonas();
     } catch (err) {
         alert("Error de conexión");
+    }
+}
+
+async function scrapelink() {
+    const urlInput = document.getElementById("scrapeUrl");
+    const patternSelect = document.getElementById("scrapePattern");
+    const scrapeResult = document.getElementById("scrapeResult");
+
+    const url = urlInput.value.trim();
+    const patternType = patternSelect.value;
+
+    if (!url || !url.startsWith("http")) {
+        scrapeResult.className = "alert-error";
+        scrapeResult.textContent = "Por favor ingrese una URL válida";
+        scrapeResult.classList.remove("hidden");
+        return;
+    }
+
+    scrapeResult.className = "alert-success";
+    scrapeResult.textContent = "Scrapeando...";
+    scrapeResult.classList.remove("hidden");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/scrape`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url, pattern_type: patternType })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            scrapeResult.className = "alert-error";
+            scrapeResult.textContent = data.detail || "Error al escrapear";
+        } else {
+            scrapeResult.className = "alert-success";
+            scrapeResult.textContent = data.message;
+
+            if (data.registros_agregados > 0) {
+                scrapeResult.textContent += ` - ${data.registros_agregados} persona(s) agregada(s) desde ${data.url_fuente}`;
+            }
+
+            cargarStats();
+            cargarPersonas();
+        }
+    } catch (err) {
+        scrapeResult.className = "alert-error";
+        scrapeResult.textContent = "Error de conexión al servidor. Verifica que el backend esté corriendo.";
     }
 }

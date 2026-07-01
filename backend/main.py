@@ -13,11 +13,13 @@ from sqlalchemy import func
 from database import engine, get_db, Base
 from models import Persona, CategoriaPersona
 from schemas import PersonaResponse, PersonaUpdate, StatsResponse, UploadResponse
+from pydantic import BaseModel
 from clasificador import clasificar_por_archivo
 from procesadores.pdf_processor import procesar_pdf
 from procesadores.excel_processor import procesar_excel
 from procesadores.word_processor import procesar_word
 from drive_watcher import sincronizar_desde_drive
+from procesadores.web_scraper import WebScraper
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -286,10 +288,79 @@ def exportar_datos(db: Session = Depends(get_db)):
             "nombre_completo": p.nombre_completo,
             "categoria": p.categoria.value,
             "fuente_documento": p.fuente_documento,
+            "url_fuente": p.url_fuente or "",
             "fecha_registro": p.fecha_registro.isoformat() if p.fecha_registro else None,
         }
         for p in personas
     ]
+
+
+class ScrapeRequest(BaseModel):
+    url: str
+    pattern_type: str = "auto"
+
+
+@app.post("/api/scrape")
+async def scrape_website(
+    request: ScrapeRequest,
+    db: Session = Depends(get_db)
+):
+    """Scrape a web page and extract person data with source URL traceability"""
+    if not request.url or not request.url.startswith(("http://", "https://")):
+        raise HTTPException(
+            status_code=400,
+            detail="La URL debe comenzar con http:// o https://"
+        )
+
+    scraper = WebScraper(delay=0.5, timeout=15)
+    try:
+        personas_extraidas = scraper.scrape_page(request.url, request.pattern_type)
+    except Exception as e:
+        logger.error(f"Error scraping {request.url}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error scraping: {str(e)}")
+
+    if not personas_extraidas:
+        return {
+            "message": f"No se encontraron personas en {request.url}",
+            "registros_agregados": 0,
+            "url_fuente": request.url
+        }
+
+    personas_creadas = []
+    for p in personas_extraidas:
+        existing = None
+        if p.get("cedula"):
+            existing = db.query(Persona).filter(
+                Persona.cedula == p["cedula"]
+            ).first()
+
+        if existing:
+            if existing.url_fuente is None:
+                existing.url_fuente = p.get("url_fuente", request.url)
+            continue
+
+        persona = Persona(
+            cedula=p.get("cedula"),
+            nombre_completo=p["nombre_completo"],
+            categoria=CategoriaPersona(p.get("categoria", "desaparecido")),
+            fuente_documento="web_scrape",
+            url_fuente=p.get("url_fuente", request.url),
+            metadatos_fuente=p.get("metadatos", {}),
+        )
+        db.add(persona)
+        db.flush()
+        personas_creadas.append(persona)
+
+    db.commit()
+    for p in personas_creadas:
+        db.refresh(p)
+
+    return {
+        "message": f"Scrapeado {request.url}. {len(personas_creadas)} persona(s) agregada(s).",
+        "registros_agregados": len(personas_creadas),
+        "url_fuente": request.url,
+        "registros": [PersonaResponse.model_validate(p) for p in personas_creadas]
+    }
 
 
 @app.post("/api/personas/bulk-categoria")
